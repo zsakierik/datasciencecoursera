@@ -60,4 +60,4 @@ library(dplyr)
   dtRes <- dtRes[-1,]
   #Order set (Subject, ActLabId)
   dtRes <- arrange(dtRes, as.integer(Subject), ActLabId)
-  write.table(dtRes, "result.txt")
+  write.table(dtRes, "result.txt", row.name=FALSE)
