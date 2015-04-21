@@ -23,7 +23,7 @@ On this merged set, used only the measurements on the mean() and std()
 * Not used ... tBodyAcc-arCoeff()-Z,4, tBodyAcc-correlation()-X,Y ... etc.
 * And convert the features names, only small letters of the English alphabet contains the name.
 
-    				Original													Convert
+    `				Original													Convert
     1			 tBodyAcc-mean()-X                                           tbodyaccmeanx
     2            tBodyAcc-mean()-Y                                           tbodyaccmeany
     3            tBodyAcc-mean()-Z                                           tbodyaccmeanz
@@ -89,7 +89,7 @@ On this merged set, used only the measurements on the mean() and std()
     63     fBodyBodyGyroMag-mean()                                    fbodybodygyromagmean
     64      fBodyBodyGyroMag-std()                                     fbodybodygyromagstd
     65 fBodyBodyGyroJerkMag-mean()                                fbodybodygyrojerkmagmean
-    66  fBodyBodyGyroJerkMag-std()                                 fbodybodygyrojerkmagstd
+    66  fBodyBodyGyroJerkMag-std()                                 fbodybodygyrojerkmagstd`
 
 I changed the the activity_labels id to activity_label values
 
