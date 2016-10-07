@@ -1,0 +1,127 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "Erik Zsaki"
+date: '2016 október 5 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Introduction
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+#Loading the Data
+I load the caret package, and read in the training and testing data:
+```{r results='hide', warning=FALSE, , message=FALSE}
+library(caret)
+```
+
+All blank, '#DIV/0' and 'NA' values are converted to 'NA'. 
+```{r results='hide'}
+if(file.exists("pml-training.csv") && file.exists("pml-testing.csv")) {
+  data.train <- read.csv('pml-training.csv', stringsAsFactors = F, na.strings = c("", "NA", "#DIV/0!"))
+  submit <- read.csv('pml-testing.csv', stringsAsFactors = F, na.strings = c("", "NA", "#DIV/0!"))
+}else{
+  data.train.Url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+  submit.Url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+  data.train <- read.csv(url(data.train.Url), stringsAsFactors = F, na.strings = c("", "NA", "#DIV/0!"))
+  submit <- read.csv(url(submit.Url), stringsAsFactors = F, na.strings = c("", "NA", "#DIV/0!"))
+}
+```
+
+#Cleaning the data(Remove all NA columns)
+```{r results='hide'}
+features <- names(data.train[,colSums(is.na(data.train)) == 0])
+data <- subset(data.train, select = features)
+
+features.submit <- names(submit[,colSums(is.na(submit)) == 0])
+data.submit <- subset(submit, select = features.submit)
+```
+
+#Data splitting
+There are 19,622 observations in the training set, so in order to reduce time and to be able to perform cross-validation, a training subset is created with 60% of the original training data set to be used for training and the remaining 40% to be used as the testing set (before final testing is performed).
+```{r results='hide'}
+set.seed(1234)
+inTrain <- createDataPartition(y=data$classe, p=0.6, list=FALSE)
+training <- data[inTrain,8:60]
+testing <-  data[-inTrain,8:60]
+data.submit <- data.submit[,8:60]
+```
+
+#Feature selection
+Selecting the right features the data can mean the difference between mediocre performance with long training times and great performance with short training times.
+
+I remove attributes with an absolute correlation of 0.9 or higher. 
+```{r results='hide'}
+descrCorr <- cor(training[,1:52])
+highCorr <- findCorrelation(descrCorr, 0.90)
+
+training <- training[,-highCorr]
+testing <-  testing[,-highCorr]
+```
+Removed attributes are roll_arm, pitch_belt, magnet_belt_z, magnet_belt_y, magnet_dumbbell_y, roll_forearm, accel_arm_z. 
+
+#Model Training and Tuning
+##Small training data
+```{r}
+set.seed(1234)
+train.small <- training[createDataPartition(y=training$classe, p=0.1, list=FALSE),]
+table(train.small$classe)
+```
+
+##Three small model
+Three models trying out small data sets. Thus, the model construction time is shorter.
+```{r warning=FALSE}
+if(file.exists("model.small.rda")) {
+  load("model.small.rda")
+}else{
+set.seed(1234)
+  model.rpart <- train(classe ~.,method="rpart",data=train.small)
+  model.rf <- train(classe ~.,method="rf",data=train.small, trControl=trainControl(method = "cv", number = 4), importance=T)
+  model.lda <- train(classe ~.,method="lda",data=train.small)
+  save(model.rpart,model.rf,model.lda, file = "model.small.rda")
+}
+```
+
+##The Three Small Model of Accuracy
+```{r warning=FALSE, message=FALSE}
+confusionMatrix(predict(model.rpart, testing), testing$classe)$overall['Accuracy']
+confusionMatrix(predict(model.rf, testing), testing$classe)$overall['Accuracy']
+confusionMatrix(predict(model.lda, testing), testing$classe)$overall['Accuracy']
+```
+The RF (random forest) model has very good Accuracy (~0.91). View a full confusionMatrix of rf.
+
+##Best small model
+```{r}
+confusionMatrix(predict(model.rf, testing), testing$classe)
+```
+
+##Full training set model
+I build the rf model with bigger trainig data.
+```{r}
+if(file.exists("model.rf.full.rda")) {
+  load("model.rf.full.rda")
+}else{
+  model.rf.full <- train(classe ~.,method="rf",data=training, trControl=trainControl(method = "cv", number = 4), importance=T)
+  save(model.rf.full, file = "model.rf.full.rda")
+}
+```
+
+##Full model
+Let see the confusionMatrix of Full Random Forest Model
+```{r}
+confusionMatrix(predict(model.rf.full, testing), testing$classe)
+```
+The Accuracy  is 0.9915, this is a good value. As we can see from the model summaries above, when we run the model on our test data for cross validation we get an accuracy of 99.1% that we can estimate to be our out of sample error. 
+
+#Predicting Results on the Test Data
+Finally, apply our model to the final test data. Upon submission all predictions were correct! 
+```{r}
+data.submit$classe <- predict(model.rf.full,data.submit[,1:52])
+data.submit[,53:54]
+```
+
